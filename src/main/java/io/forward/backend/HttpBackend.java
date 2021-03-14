@@ -3,7 +3,6 @@ package io.forward.backend;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.*;
-import io.netty.util.AsciiString;
 import io.netty.util.CharsetUtil;
 import lombok.extern.slf4j.Slf4j;
 
@@ -15,12 +14,23 @@ import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 public class HttpBackend implements Backend {
+
     private final String backendUrl;
 
-    public HttpBackend(String url) {
+    private final HttpClient client;
+
+    public HttpBackend(HttpClient httpClient, String url) {
+        client = httpClient;
         backendUrl = url;
     }
 
+    /**
+     * Maps a java.net.http.HttpResponse into a Netty HTTP response
+     *
+     * @param response A java.net.HttpResponse
+     *
+     * @return A Netty FullHttpResponse
+     */
     private FullHttpResponse mapResponse(HttpResponse<String> response) {
         ByteBuf responseBody = Unpooled.copiedBuffer(response.body(), CharsetUtil.UTF_8);
         FullHttpResponse fullResponse =
@@ -40,7 +50,6 @@ public class HttpBackend implements Backend {
     }
 
     public FullHttpResponse dispatch() {
-        HttpClient client = HttpClient.newHttpClient();
         HttpRequest clientRequest = java.net.http.HttpRequest.newBuilder()
                 .uri(URI.create(backendUrl))
                 .build();
