@@ -5,6 +5,7 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.handler.codec.HeadersUtils;
 import io.netty.handler.codec.http.*;
 import lombok.extern.slf4j.Slf4j;
 
@@ -17,14 +18,15 @@ import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 @Slf4j
 public class ServerHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
     /**
-     * Send an HTTP response back
+     * Send an HTTP response back to client (status code only)
      *
-     * @param ctx
-     * @param request
-     * @param status an HTTP status
+     * @param ctx a Netty [[ChannelHandlerContext]]
+     * @param request a [[FullHttpRequest]]
+     * @param status an HTTP status to return
      */
     private void sendHttpResponse(ChannelHandlerContext ctx, FullHttpRequest request, HttpResponseStatus status) {
         final FullHttpResponse resp = new DefaultFullHttpResponse(HTTP_1_1, status);
+        resp.headers().add(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON);
         resp.headers().add("Content-Length", "0");
         final ChannelFuture cf = ctx.channel().writeAndFlush(resp);
         if (!HttpUtil.isKeepAlive(request)) {
@@ -44,19 +46,25 @@ public class ServerHandler extends SimpleChannelInboundHandler<FullHttpRequest> 
 
         log.info("Received HTTP request {} {}", request.method(), request.uri());
 
-        final HttpBackend backend = new HttpBackend(HttpClient.newHttpClient(), "http://localhost:8009/");
-
         final String path = request.uri();
         if (path == null) {
             sendHttpResponse(ctx, request, BAD_REQUEST);
             return;
         }
 
-        FullHttpResponse response = backend.dispatch();
+        if (path.contains("foo")) {
 
+            // HTTP request example with timing
+            final HttpBackend backend = new HttpBackend(HttpClient.newHttpClient(), "http://localhost:8009/");
+            long startTime = System.currentTimeMillis();
+            FullHttpResponse response = backend.dispatch();
+            long endTime = System.currentTimeMillis();
+            sendFullHttpResponse(ctx, request, response);
+            log.info("Request took {} ms", (endTime - startTime));
 
-
-        // Default response
-        sendHttpResponse(ctx, request, NOT_FOUND);
+        } else {
+            // Default response
+            sendHttpResponse(ctx, request, NOT_FOUND);
+        }
     }
 }
