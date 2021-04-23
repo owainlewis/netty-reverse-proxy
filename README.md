@@ -1,3 +1,3 @@
 # Forward
 
-API Gateway
+Forward is an API Gateway based on Netty.
